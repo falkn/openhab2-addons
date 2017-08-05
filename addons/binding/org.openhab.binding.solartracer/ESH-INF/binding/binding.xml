@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<binding:binding id="solartracer"
+				 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+				 xmlns:binding="http://eclipse.org/smarthome/schemas/binding/v1.0.0"
+				 xsi:schemaLocation="http://eclipse.org/smarthome/schemas/binding/v1.0.0 http://eclipse.org/smarthome/schemas/binding-1.0.0.xsd">
+
+	<name>SolarTracer Binding</name>
+	<description>
+	  Binding for solar charing regulator EpSolar MPPT Tracer MT-5
+	  protocol (1215-RN, 1210-RN series)
+	</description>
+	<author>Christian Falk</author>
+
+</binding:binding>
