@@ -57,6 +57,12 @@ public class SolarTracerHandler extends BaseThingHandler
     private static final int MAX_MESSAGE_LENGTH = 200;
     private static final byte QUERY_COMMAND = (byte) 0xA0;
 
+    // It looks like the CRC checksum retrieved on reads does not match the
+    // documentation, both xxv/tracer and dangowrt/tracertools does implement
+    // this CRC, but never rejects replies that have incorrect CRCs. Let's
+    // do the same.
+    private static final boolean VALIDATE_READ_CRC = false;
+
     private SerialPort serialPort;
     private OutputStreamWriter output;
     private InputStream input;
@@ -242,7 +248,7 @@ public class SolarTracerHandler extends BaseThingHandler
 
                         break;
                     case READ_HEADER:
-                        int header = readInt(input, readState.waitAvailable);
+                        int header = consumeInt(input, readState.waitAvailable);
                         // Convert java signed byte to unsigned.
                         msg.command = (byte) ((header >> 8) & 0xff);
                         msg.dataLength = header & 0xff;
@@ -261,7 +267,7 @@ public class SolarTracerHandler extends BaseThingHandler
                         }
                         break;
                     case READ_FOOTER:
-                        int footer = readInt(input, readState.waitAvailable);
+                        int footer = consumeInt(input, readState.waitAvailable);
                         msg.crc = footer >> 8;
 
                         if ((footer & 0xff) == 0x7f) {
@@ -291,7 +297,7 @@ public class SolarTracerHandler extends BaseThingHandler
         }
     }
 
-    int readInt(InputStream is, int len) throws IOException {
+    int consumeInt(InputStream is, int len) throws IOException {
         int result = 0;
         for (int i = 0; i < len; ++i) {
             result <<= 8;
@@ -303,34 +309,51 @@ public class SolarTracerHandler extends BaseThingHandler
     private void readMessage(Message msg) {
 
         // Validate CRC checksum
-        int expectedCrc = calcuateCrc16(msg.data, msg.dataLength);
-        if (msg.crc != expectedCrc) {
-            logger.debug("Discarding message with invalid CRC: ", msg.crc,
-                    " expected: ", expectedCrc);
-            return;
+        if (VALIDATE_READ_CRC) {
+            int expectedCrc = calcuateCrc16(msg.data, msg.dataLength);
+            if (msg.crc != expectedCrc) {
+                logger.debug(
+                        "Discarding message with invalid CRC: {} expected {}",
+                        Integer.toHexString(msg.crc),
+                        Integer.toHexString(expectedCrc));
+                return;
+            }
         }
-        logger.debug("Recieved message: ", msg.data);
+        logger.debug("Recieved message: {}", msg.data);
 
         if (msg.command != QUERY_COMMAND) {
-            logger.debug("Discarding message, not query command: ",
+            logger.debug("Discarding message, not query command: {}",
                     msg.command);
             return;
         }
 
         if (msg.dataLength < 23) {
-            logger.debug("Discarding message with invalid CRC: ", msg.crc);
+            logger.debug("Discarding too short message {} < {}", msg.dataLength,
+                    23);
             return;
         }
 
         // TODO: Mark offline when too many invalid messages?
 
-        updateStatus(ThingStatus.ONLINE);
+        // updateStatus(ThingStatus.ONLINE);
 
         // Parse message and update channels
         updateState(CHANNEL_BATT_VOLTAGE, toDecimal(msg.data, 0));
+        logger.debug("Battery Voltage: {} V", toDecimal(msg.data, 0));
         updateState(CHANNEL_CHARGE_CURRENT, toDecimal(msg.data, 21));
+        logger.debug("Charge Current: {} A", toDecimal(msg.data, 21));
     }
 
+    /**
+     * 16-bit CRC checksum a'la MT-5
+     *
+     * Matches documentation implementation, but not what's seen in the
+     * wild. Keeping this to be able to send correct messages.
+     *
+     * @param bytes Bytes of data to calculate checksum for.
+     * @param len Reading data[0:len]
+     * @return
+     */
     private static int calcuateCrc16(byte[] bytes, int len) {
         if (bytes.length < len) {
             throw new RuntimeException("bytes (" + bytes.length
@@ -342,17 +365,17 @@ public class SolarTracerHandler extends BaseThingHandler
         int crc = 0;
 
         if (i >= 0) {
-            crc |= bytes[i++] << 16;
+            crc |= (bytes[i++] & 0xff) << 16;
         }
         if (i >= 1) {
-            crc |= bytes[i++] << 8;
+            crc |= (bytes[i++] & 0xff) << 8;
         }
 
         for (; i < len; ++i) {
             crc |= bytes[i] & 0xff;
             for (int j = 0; j < 8; ++j) {
                 crc <<= 1;
-                if ((crc & 0x1000000) > 0) {
+                if ((crc & 0x100_0000) != 0) {
                     crc ^= 0x104100;
                 }
             }
@@ -363,7 +386,8 @@ public class SolarTracerHandler extends BaseThingHandler
 
     private static DecimalType toDecimal(byte[] bytes, int offset) {
         return new DecimalType(
-                ((bytes[offset + 1] << 8) | bytes[offset]) / 100.0);
+                (((bytes[offset + 1] & 0xff) << 8) | (bytes[offset] & 0xff))
+                        / 100.0);
     }
 
     private static OnOffType toOnoff(byte[] bytes, int offset) {
