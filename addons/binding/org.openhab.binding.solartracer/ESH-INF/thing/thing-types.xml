@@ -5,7 +5,7 @@
 						  xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
 
 	<!-- Sample Thing Type -->
-	<thing-type id="solartracer">
+	<thing-type id="mt5">
 		<label>SolarTracer</label>
 		<description>Solar charger regulator MPPT Tracer MT-5</description>
 

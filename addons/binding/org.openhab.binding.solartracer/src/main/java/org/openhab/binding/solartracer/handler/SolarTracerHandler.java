@@ -13,6 +13,9 @@ import static org.openhab.binding.solartracer.SolarTracerBindingConstants.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.TooManyListenersException;
 
 import org.eclipse.smarthome.core.library.types.DecimalType;
@@ -27,9 +30,12 @@ import org.openhab.binding.solartracer.SolarTracerBindingConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import gnu.io.NRSerialPort;
+import gnu.io.CommPortIdentifier;
+import gnu.io.PortInUseException;
+import gnu.io.SerialPort;
 import gnu.io.SerialPortEvent;
 import gnu.io.SerialPortEventListener;
+import gnu.io.UnsupportedCommOperationException;
 
 /**
  * The {@link SolarTracerHandler} is responsible for handling commands, which are
@@ -44,13 +50,14 @@ public class SolarTracerHandler extends BaseThingHandler
             .getLogger(SolarTracerHandler.class);
 
     // Protocol constants
+    private static final int PORT_OPEN_TIMEOUT_SEC = 10000;
     private static final int BAUD = 9600;
     private static final byte[] SYNC_HEADER = { (byte) 0xEB, (byte) 0x90,
             (byte) 0xEB, (byte) 0x90, (byte) 0xEB, (byte) 0x90 };
     private static final int MAX_MESSAGE_LENGTH = 200;
     private static final byte QUERY_COMMAND = (byte) 0xA0;
 
-    private NRSerialPort serialPort;
+    private SerialPort serialPort;
     private OutputStreamWriter output;
     private InputStream input;
     private String portName;
@@ -82,49 +89,103 @@ public class SolarTracerHandler extends BaseThingHandler
                 .get(SolarTracerBindingConstants.CONFIG_PORT);
 
         // Initialize serial port and input/output streams.
-        if (portName != null) {
-            // Initialize serial port with default configs
-            // DATABITS_8, STOPBITS_1 and PARITY_NONE.
-            serialPort = new NRSerialPort(portName, BAUD);
-            if (serialPort.connect()) {
-                // TODO: Wait to set online until we got first message?
-                updateStatus(ThingStatus.ONLINE);
-                // try {
-                input = serialPort.getInputStream();
-                readState = ReadState.WAIT_SYNC;
-                msg = new Message();
-
-                // } catch (IOException ex) {
-                // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                // "Failed to open input stream from serial port " + portName + " IOException: "
-                // + ex.toString());
-                // logger.debug("Failed to open input stream from serial port {}. Exception: ", portName,
-                // ex.toString());
-                // }
-                // activate the DATA_AVAILABLE notifier
-                try {
-                    serialPort.addEventListener(this);
-                } catch (TooManyListenersException e) {
-                    throw new RuntimeException(
-                            "Unable to listen to serial port.", e);
-                }
-                serialPort.notifyOnDataAvailable(true);
-
-                output = new OutputStreamWriter(serialPort.getOutputStream());
-
-                logger.info("Serial port [{}] is initialized.", portName);
-            } else {
-                updateStatus(ThingStatus.OFFLINE,
-                        ThingStatusDetail.CONFIGURATION_ERROR,
-                        "Failed to connect to serial port " + portName);
-                logger.debug("Failed to connect to serial port {}", portName);
-            }
-        } else {
+        if (portName == null) {
             updateStatus(ThingStatus.OFFLINE,
                     ThingStatusDetail.CONFIGURATION_ERROR,
                     "Serial port name not configured");
-            logger.debug("Serial port name not configured");
+            return;
         }
+
+        // Initialize serial port with default configs
+        // DATABITS_8, STOPBITS_1 and PARITY_NONE.
+        // serialPort = new NRSerialPort(portName, BAUD);
+        try {
+            serialPort = openSerialPort(portName);
+        } catch (IOException e) {
+            String msg = "Could not open serial port " + portName
+                    + " Exception: " + e;
+            updateStatus(ThingStatus.OFFLINE,
+                    ThingStatusDetail.COMMUNICATION_ERROR, msg);
+            logger.debug(msg);
+            return;
+        }
+
+        try {
+            input = serialPort.getInputStream();
+        } catch (IOException e) {
+            String msg = "Could not open input stream from serial port "
+                    + portName + " Exception: " + e;
+            updateStatus(ThingStatus.OFFLINE,
+                    ThingStatusDetail.COMMUNICATION_ERROR, msg);
+            logger.debug(msg);
+            return;
+        }
+
+        // TODO: Wait to set online until we got first message?
+        updateStatus(ThingStatus.ONLINE);
+        readState = ReadState.WAIT_SYNC;
+        msg = new Message();
+
+        // } catch (IOException ex) {
+        // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+        // "Failed to open input stream from serial port " + portName + " IOException: "
+        // + ex.toString());
+        // logger.debug("Failed to open input stream from serial port {}. Exception: ", portName,
+        // ex.toString());
+        // }
+        // activate the DATA_AVAILABLE notifier
+        try {
+            serialPort.addEventListener(this);
+        } catch (TooManyListenersException e) {
+            throw new RuntimeException("Unable to listen to serial port.", e);
+        }
+        serialPort.notifyOnDataAvailable(true);
+
+        // output = new OutputStreamWriter(serialPort.getOutputStream());
+
+        logger.info("Serial port [{}] is initialized.", portName);
+    }
+
+    private SerialPort openSerialPort(String portName) throws IOException {
+        CommPortIdentifier portId = null;
+        @SuppressWarnings("rawtypes")
+        Enumeration portList = CommPortIdentifier.getPortIdentifiers();
+        List<String> allNames = new ArrayList();
+        while (portList.hasMoreElements()) {
+            CommPortIdentifier id = (CommPortIdentifier) portList.nextElement();
+            allNames.add(id.getName() + ":" + id.getPortType());
+            if (id.getPortType() == CommPortIdentifier.PORT_SERIAL) {
+                if (id.getName().equals(portName)) {
+                    logger.debug("Serial port '{}' has been found.", portName);
+                    portId = id;
+                }
+            }
+        }
+
+        if (portId == null) {
+            throw new IOException("Serial port " + portName
+                    + " not found among " + allNames + ".");
+        }
+
+        SerialPort serialPort;
+        try {
+            serialPort = portId.open("openHAB", PORT_OPEN_TIMEOUT_SEC);
+        } catch (PortInUseException e) {
+            throw new IOException(
+                    "Could not open serial port " + portName + ".", e);
+        }
+
+        try {
+            // set port parameters
+            serialPort.setSerialPortParams(BAUD, SerialPort.DATABITS_8,
+                    SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
+        } catch (UnsupportedCommOperationException e) {
+            throw new IOException(
+                    "Could not open configure serial port " + portName + ".",
+                    e);
+        }
+
+        return serialPort;
     }
 
     @Override
@@ -141,7 +202,7 @@ public class SolarTracerHandler extends BaseThingHandler
 
         if (serialPort != null) {
             serialPort.removeEventListener();
-            serialPort.disconnect();
+            serialPort.close();
             serialPort = null;
         }
 

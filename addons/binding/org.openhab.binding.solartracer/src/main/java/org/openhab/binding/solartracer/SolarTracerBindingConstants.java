@@ -24,8 +24,7 @@ public class SolarTracerBindingConstants {
     public static final String CONFIG_PORT = "port";
 
     // List of all Thing Type UIDs
-    public static final ThingTypeUID THING_TYPE_SOLAR_TRACER = new ThingTypeUID(
-            BINDING_ID, "solartracer");
+    public static final ThingTypeUID THING_TYPE_SOLAR_TRACER = new ThingTypeUID(BINDING_ID, "mt5");
 
     // List of all Channel ids
     public static final String CHANNEL_BATT_VOLTAGE = "batt_voltage";
