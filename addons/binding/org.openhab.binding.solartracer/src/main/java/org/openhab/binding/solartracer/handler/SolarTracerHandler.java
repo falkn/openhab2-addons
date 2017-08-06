@@ -107,6 +107,27 @@ public class SolarTracerHandler extends BaseThingHandler
         // serialPort = new NRSerialPort(portName, BAUD);
         try {
             serialPort = openSerialPort(portName);
+            input = serialPort.getInputStream();
+
+            // TODO: Wait to set online until we got first message?
+            updateStatus(ThingStatus.ONLINE);
+            readState = ReadState.WAIT_SYNC;
+            msg = new Message();
+
+            try {
+                serialPort.addEventListener(this);
+            } catch (TooManyListenersException e) {
+                throw new IOException("Unable to listen to serial port. "
+                        + "For mac OS X, you may need to run "
+                        + "\"sudo mkdir /var/lock && "
+                        + "sudo chmod go+rwx /var/lock\". Exception: "
+                        + e.toString(), e);
+            }
+            serialPort.notifyOnDataAvailable(true);
+
+            // output = new OutputStreamWriter(serialPort.getOutputStream());
+
+            logger.debug("Serial port [{}] is initialized.", portName);
         } catch (IOException e) {
             String msg = "Could not open serial port " + portName
                     + " Exception: " + e;
@@ -115,51 +136,16 @@ public class SolarTracerHandler extends BaseThingHandler
             logger.debug(msg);
             return;
         }
-
-        try {
-            input = serialPort.getInputStream();
-        } catch (IOException e) {
-            String msg = "Could not open input stream from serial port "
-                    + portName + " Exception: " + e;
-            updateStatus(ThingStatus.OFFLINE,
-                    ThingStatusDetail.COMMUNICATION_ERROR, msg);
-            logger.debug(msg);
-            return;
-        }
-
-        // TODO: Wait to set online until we got first message?
-        updateStatus(ThingStatus.ONLINE);
-        readState = ReadState.WAIT_SYNC;
-        msg = new Message();
-
-        // } catch (IOException ex) {
-        // updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-        // "Failed to open input stream from serial port " + portName + " IOException: "
-        // + ex.toString());
-        // logger.debug("Failed to open input stream from serial port {}. Exception: ", portName,
-        // ex.toString());
-        // }
-        // activate the DATA_AVAILABLE notifier
-        try {
-            serialPort.addEventListener(this);
-        } catch (TooManyListenersException e) {
-            throw new RuntimeException("Unable to listen to serial port.", e);
-        }
-        serialPort.notifyOnDataAvailable(true);
-
-        // output = new OutputStreamWriter(serialPort.getOutputStream());
-
-        logger.info("Serial port [{}] is initialized.", portName);
     }
 
     private SerialPort openSerialPort(String portName) throws IOException {
         CommPortIdentifier portId = null;
         @SuppressWarnings("rawtypes")
-        Enumeration portList = CommPortIdentifier.getPortIdentifiers();
-        List<String> allNames = new ArrayList();
+        Enumeration portList;
+
+        portList = CommPortIdentifier.getPortIdentifiers();
         while (portList.hasMoreElements()) {
             CommPortIdentifier id = (CommPortIdentifier) portList.nextElement();
-            allNames.add(id.getName() + ":" + id.getPortType());
             if (id.getPortType() == CommPortIdentifier.PORT_SERIAL) {
                 if (id.getName().equals(portName)) {
                     logger.debug("Serial port '{}' has been found.", portName);
@@ -169,8 +155,22 @@ public class SolarTracerHandler extends BaseThingHandler
         }
 
         if (portId == null) {
+            List<String> allNames = new ArrayList<String>();
+            portList = CommPortIdentifier.getPortIdentifiers();
+            while (portList.hasMoreElements()) {
+                CommPortIdentifier id = (CommPortIdentifier) portList
+                        .nextElement();
+                allNames.add(id.getName() + ":" + id.getPortType());
+            }
             throw new IOException("Serial port " + portName
-                    + " not found among " + allNames + ".");
+                    + " not found among " + String.join(", ", allNames)
+                    + ". You may need to pass -Dgnu.io.rxtx.SerialPorts="
+                    + portName
+                    + " to java startup arguments or add to EXTRA_JAVA_OPTS "
+                    + "/dev/default/openhab2 on linux. On OS X Java doesn't have "
+                    + "built-in support for serial ports, this has to be "
+                    + "installed by following instructions on "
+                    + "http://jlog.org/rxtx-mac.html");
         }
 
         SerialPort serialPort;
@@ -210,8 +210,6 @@ public class SolarTracerHandler extends BaseThingHandler
             serialPort.close();
             serialPort = null;
         }
-
-        super.dispose();
     }
 
     @Override
@@ -291,7 +289,7 @@ public class SolarTracerHandler extends BaseThingHandler
                     ThingStatusDetail.COMMUNICATION_ERROR,
                     "Failed to read from serial port " + portName
                             + " Exception: " + e.toString());
-            logger.error("Failed to read from serial port " + portName
+            logger.warn("Failed to read from serial port " + portName
                     + " Exception: " + e.toString());
         }
     }
@@ -332,8 +330,9 @@ public class SolarTracerHandler extends BaseThingHandler
         }
 
         // TODO: Mark offline when too many invalid messages?
-
-        // updateStatus(ThingStatus.ONLINE);
+        if (thing.getStatus() != ThingStatus.ONLINE) {
+            updateStatus(ThingStatus.ONLINE);
+        }
 
         // Parse message and update channels
         DecimalType battVoltage = toDecimal(msg.data, 0);
