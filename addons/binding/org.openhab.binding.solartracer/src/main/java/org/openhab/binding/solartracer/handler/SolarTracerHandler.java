@@ -306,7 +306,6 @@ public class SolarTracerHandler extends BaseThingHandler
     }
 
     private void readMessage(Message msg) {
-
         // Validate CRC checksum
         if (VALIDATE_READ_CRC) {
             int expectedCrc = calcuateCrc16(msg.data, msg.dataLength);

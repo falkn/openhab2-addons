@@ -1,164 +1,158 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<thing:thing-descriptions bindingId="solartracer"
-						  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-						  xmlns:thing="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0"
-						  xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
+<thing:thing-descriptions bindingId="solartracer" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="http://eclipse.org/smarthome/schemas/thing-description/v1.0.0 http://eclipse.org/smarthome/schemas/thing-description-1.0.0.xsd">
 
 	<!-- Thing Type -->
 	<thing-type id="mt5">
 		<label>SolarTracer</label>
 		<description>
-		  Solar charger regulator MPPT Tracer with MT-5 protocl
+          Solar charger regulator EpSolar/Epever MPPT Tracer with MT-5 protocol.
 		</description>
 
-        <channels>
-            <channel id="charge_power" typeId="charge_power" />
-            <channel id="charge_current" typeId="charge_current" />
-            <channel id="pv_voltage" typeId="pv_voltage" />
+		<channels>
+			<channel id="charge_power" typeId="charge_power" />
+			<channel id="charge_current" typeId="charge_current" />
+			<channel id="pv_voltage" typeId="pv_voltage" />
 
-            <channel id="batt_voltage" typeId="batt_voltage" />
-            <channel id="batt_temp" typeId="batt_temp" />
-            <channel id="batt_full" typeId="batt_full" />
-            <channel id="batt_charging" typeId="batt_charging" />
-            <channel id="batt_overload" typeId="batt_overload" />
-            <channel id="batt_overdischarge" typeId="batt_overdischarge" />
-            <channel id="batt_overdischarge_voltage" typeId="batt_overdischarge_voltage" />
-            <channel id="batt_full_voltage" typeId="batt_full_voltage" />
-        
-            <channel id="load_power" typeId="load_power" />
-            <channel id="load_current" typeId="load_current" />
-            <channel id="load_on" typeId="load_on" />
-            <channel id="load_overload" typeId="load_overload" />
-            <channel id="load_short" typeId="load_short" />
-        </channels>
+			<channel id="batt_voltage" typeId="batt_voltage" />
+			<channel id="batt_temp" typeId="batt_temp" />
+			<channel id="batt_full" typeId="batt_full" />
+			<channel id="batt_charging" typeId="batt_charging" />
+			<channel id="batt_overload" typeId="batt_overload" />
+			<channel id="batt_overdischarge" typeId="batt_overdischarge" />
+			<channel id="batt_overdischarge_voltage" typeId="batt_overdischarge_voltage" />
+			<channel id="batt_full_voltage" typeId="batt_full_voltage" />
 
-	    <config-description>
-	        <parameter name="port" type="text" required="true">
-	            <label>SerialPort</label>
-	            <description>
+			<channel id="load_power" typeId="load_power" />
+			<channel id="load_current" typeId="load_current" />
+			<channel id="load_on" typeId="load_on" />
+			<channel id="load_overload" typeId="load_overload" />
+			<channel id="load_short" typeId="load_short" />
+		</channels>
+
+		<config-description>
+			<parameter name="port" type="text" required="true">
+				<label>SerialPort</label>
+				<description>
 	              Serial port where MPPT tracer MT-5 is connected. For example,
 	              on raspberry PI UART this would be: "/dev/ttyAMA0", on windows
 	              "COM1". Please see ... for instructions on how to make a cable.
 	            </description>
-	        </parameter>
-	        <parameter name="refresh" type="integer" min="0">
-	            <label>Refresh interval</label>
-	            <description>
+			</parameter>
+			<parameter name="refresh" type="integer" min="0">
+				<label>Refresh interval</label>
+				<description>
 	              Specifies the refresh interval in seconds. Set to 0 to 
 	              turn off refresh polling and just listen. This is good for
 	              spy connection when only RXD is connected and a MT display
 	              does the polling.
                </description>
-	            <default>0</default>
-	        </parameter>
-	    </config-description>
+				<default>0</default>
+			</parameter>
+		</config-description>
 	</thing-type>
-    
-    <!-- 
-    Channel Types
-    
-    These are grouped by their unit. Maximum and minimum are set as 10x the
-    rated value (for example, regulator has max 20A, we set unreasonable at
-    >200A)
-     -->
+
+	<!-- Channel Types These are grouped by their unit. Maximum and minimum are set as 10x the rated value (for example, regulator 
+		has max 20A, we set unreasonable at >200A) -->
 
 	<!-- Channel Types Power -->
-    <channel-type id="charge_power" advanced="true">
-        <item-type>Number</item-type>
-        <label>Charge Power</label>
-        <category>Energy</category>
-        <state min="0" max="600" step="0.1" pattern="%.1f W" readOnly="true"></state>
-    </channel-type>
-    <channel-type id="load_power" advanced="true">
-        <item-type>Number</item-type>
-        <label>Load Power</label>
-        <category>Energy</category>
-        <state min="0" max="600" step="0.1" pattern="%.1f W" readOnly="true"></state>
-    </channel-type>
+	<channel-type id="charge_power" advanced="true">
+		<item-type>Number</item-type>
+		<label>Charge Power</label>
+		<category>Energy</category>
+		<state min="0" max="600" step="0.1" pattern="%.1f W" readOnly="true"></state>
+	</channel-type>
+	<channel-type id="load_power" advanced="true">
+		<item-type>Number</item-type>
+		<label>Load Power</label>
+		<category>Energy</category>
+		<state min="0" max="600" step="0.1" pattern="%.1f W" readOnly="true"></state>
+	</channel-type>
 
-    <!-- Channel Types Voltage -->
-    <channel-type id="pv_voltage" advanced="true">
-        <item-type>Number</item-type>
-        <label>Solar Panel Voltage</label>
-        <category>Energy</category>
-        <state min="0" max="300" step="0.01" pattern="%.2f V" readOnly="true"></state>
-    </channel-type>
-    <channel-type id="batt_voltage" advanced="true">
-        <item-type>Number</item-type>
-        <label>Battery Voltage</label>
-        <category>Energy</category>
-        <state min="0" max="300" step="0.01" pattern="%.2f V" readOnly="true"></state>
-    </channel-type>
-    <channel-type id="batt_overdischarge_voltage" advanced="true">
-        <item-type>Number</item-type>
-        <label>Battery Over Discharge Voltage</label>
-        <category>Energy</category>
-        <state min="0" max="300" step="0.01" pattern="%.2f V" readOnly="true"></state>
-    </channel-type>
-    <channel-type id="batt_full_voltage" advanced="true">
-        <item-type>Number</item-type>
-        <label>Battery Full Voltage</label>
-        <category>Energy</category>
-        <state min="0" max="300" step="0.01" pattern="%.2f V" readOnly="true"></state>
-    </channel-type>
+	<!-- Channel Types Voltage -->
+	<channel-type id="pv_voltage" advanced="true">
+		<item-type>Number</item-type>
+		<label>Solar Panel Voltage</label>
+		<category>Energy</category>
+		<state min="0" max="300" step="0.01" pattern="%.2f V" readOnly="true"></state>
+	</channel-type>
+	<channel-type id="batt_voltage" advanced="true">
+		<item-type>Number</item-type>
+		<label>Battery Voltage</label>
+		<category>Energy</category>
+		<state min="0" max="300" step="0.01" pattern="%.2f V" readOnly="true"></state>
+	</channel-type>
+	<channel-type id="batt_overdischarge_voltage" advanced="true">
+		<item-type>Number</item-type>
+		<label>Battery Over Discharge Voltage</label>
+		<category>Energy</category>
+		<state min="0" max="300" step="0.01" pattern="%.2f V" readOnly="true"></state>
+	</channel-type>
+	<channel-type id="batt_full_voltage" advanced="true">
+		<item-type>Number</item-type>
+		<label>Battery Full Voltage</label>
+		<category>Energy</category>
+		<state min="0" max="300" step="0.01" pattern="%.2f V" readOnly="true"></state>
+	</channel-type>
 
-    <!-- Channel Types Current -->
-    <channel-type id="charge_current" advanced="true">
-        <item-type>Number</item-type>
-        <label>Charge Current</label>
-        <category>Energy</category>
-        <state min="0" max="200" step="0.01" pattern="%.2f A" readOnly="true"></state>
-    </channel-type>
-    <channel-type id="load_current" advanced="true">
-        <item-type>Number</item-type>
-        <label>Load Current</label>
-        <category>Energy</category>
-        <state min="0" max="200" step="0.01" pattern="%.2f A" readOnly="true"></state>
-    </channel-type>
+	<!-- Channel Types Current -->
+	<channel-type id="charge_current" advanced="true">
+		<item-type>Number</item-type>
+		<label>Charge Current</label>
+		<category>Energy</category>
+		<state min="0" max="200" step="0.01" pattern="%.2f A" readOnly="true"></state>
+	</channel-type>
+	<channel-type id="load_current" advanced="true">
+		<item-type>Number</item-type>
+		<label>Load Current</label>
+		<category>Energy</category>
+		<state min="0" max="200" step="0.01" pattern="%.2f A" readOnly="true"></state>
+	</channel-type>
 
-    <!-- Channel Types Temp -->
-    <channel-type id="batt_temp" advanced="true">
-        <item-type>Number</item-type>
-        <label>Battery Temperature</label>
-        <category>Temperature</category>
-        <state min="-30" max="100" step="1" pattern="%.0f °C" readOnly="true"></state>
-    </channel-type>
+	<!-- Channel Types Temp -->
+	<channel-type id="batt_temp" advanced="true">
+		<item-type>Number</item-type>
+		<label>Battery Temperature</label>
+		<category>Temperature</category>
+		<state min="-30" max="100" step="1" pattern="%.0f °C" readOnly="true"></state>
+	</channel-type>
 
-    <!-- Channel Types OnOff -->
-    <channel-type id="batt_full" advanced="true">
-        <item-type>OnOff</item-type>
-        <label>Battery Full</label>
-        <category>Energy</category>
-    </channel-type>
-    <channel-type id="batt_charging" advanced="true">
-        <item-type>OnOff</item-type>
-        <label>Battery Charging</label>
-        <category>Energy</category>
-    </channel-type>
-    <channel-type id="batt_overload" advanced="true">
-        <item-type>OnOff</item-type>
-        <label>Battery Overload</label>
-        <category>Energy</category>
-    </channel-type>
-    <channel-type id="batt_overdischarge" advanced="true">
-        <item-type>OnOff</item-type>
-        <label>Battery Over Discharge</label>
-        <category>Energy</category>
-    </channel-type>
-    <channel-type id="load_on" advanced="true">
-        <item-type>OnOff</item-type>
-        <label>Load On</label>
-        <category>Energy</category>
-    </channel-type>
-    <channel-type id="load_overload" advanced="true">
-        <item-type>OnOff</item-type>
-        <label>Load Overload</label>
-        <category>Energy</category>
-    </channel-type>
-    <channel-type id="load_short" advanced="true">
-        <item-type>OnOff</item-type>
-        <label>Load Short-circuit</label>
-        <category>Energy</category>
-    </channel-type>
+	<!-- Channel Types OnOff -->
+	<channel-type id="batt_full" advanced="true">
+		<item-type>OnOff</item-type>
+		<label>Battery Full</label>
+		<category>Energy</category>
+	</channel-type>
+	<channel-type id="batt_charging" advanced="true">
+		<item-type>OnOff</item-type>
+		<label>Battery Charging</label>
+		<category>Energy</category>
+	</channel-type>
+	<channel-type id="batt_overload" advanced="true">
+		<item-type>OnOff</item-type>
+		<label>Battery Overload</label>
+		<category>Energy</category>
+	</channel-type>
+	<channel-type id="batt_overdischarge" advanced="true">
+		<item-type>OnOff</item-type>
+		<label>Battery Over Discharge</label>
+		<category>Energy</category>
+	</channel-type>
+	<channel-type id="load_on" advanced="true">
+		<item-type>OnOff</item-type>
+		<label>Load On</label>
+		<category>Energy</category>
+	</channel-type>
+	<channel-type id="load_overload" advanced="true">
+		<item-type>OnOff</item-type>
+		<label>Load Overload</label>
+		<category>Energy</category>
+	</channel-type>
+	<channel-type id="load_short" advanced="true">
+		<item-type>OnOff</item-type>
+		<label>Load Short-circuit</label>
+		<category>Energy</category>
+	</channel-type>
 
 </thing:thing-descriptions>
