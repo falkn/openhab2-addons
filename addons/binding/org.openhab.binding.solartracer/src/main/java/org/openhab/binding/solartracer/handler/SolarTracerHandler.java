@@ -177,8 +177,8 @@ public class SolarTracerHandler extends BaseThingHandler
         try {
             serialPort = portId.open("openHAB", PORT_OPEN_TIMEOUT_SEC);
         } catch (PortInUseException e) {
-            throw new IOException(
-                    "Could not open serial port " + portName + ".", e);
+            throw new IOException("Could not open serial port " + portName
+                    + ". Exception: " + e.toString(), e);
         }
 
         try {
@@ -186,9 +186,8 @@ public class SolarTracerHandler extends BaseThingHandler
             serialPort.setSerialPortParams(BAUD, SerialPort.DATABITS_8,
                     SerialPort.STOPBITS_1, SerialPort.PARITY_NONE);
         } catch (UnsupportedCommOperationException e) {
-            throw new IOException(
-                    "Could not open configure serial port " + portName + ".",
-                    e);
+            throw new IOException("Could not open configure serial port "
+                    + portName + "." + ". Exception: " + e.toString(), e);
         }
 
         return serialPort;
@@ -338,10 +337,29 @@ public class SolarTracerHandler extends BaseThingHandler
         // updateStatus(ThingStatus.ONLINE);
 
         // Parse message and update channels
-        updateState(CHANNEL_BATT_VOLTAGE, toDecimal(msg.data, 0));
-        logger.debug("Battery Voltage: {} V", toDecimal(msg.data, 0));
-        updateState(CHANNEL_CHARGE_CURRENT, toDecimal(msg.data, 21));
-        logger.debug("Charge Current: {} A", toDecimal(msg.data, 21));
+        DecimalType battVoltage = toDecimal(msg.data, 0);
+        updateState(CHANNEL_BATT_VOLTAGE, battVoltage);
+        updateState(CHANNEL_PV_VOLTAGE, toDecimal(msg.data, 2));
+        DecimalType loadCurrent = toDecimal(msg.data, 6);
+        updateState(CHANNEL_LOAD_CURRENT, loadCurrent);
+        updateState(CHANNEL_BATT_OVERDISCHARGE_VOLTAGE, toDecimal(msg.data, 8));
+        updateState(CHANNEL_BATT_FULL_VOLTAGE, toDecimal(msg.data, 10));
+        updateState(CHANNEL_LOAD_ON, toOnOff(msg.data, 12));
+        updateState(CHANNEL_LOAD_OVERLOAD, toOnOff(msg.data, 13));
+        updateState(CHANNEL_LOAD_SHORT, toOnOff(msg.data, 14));
+        updateState(CHANNEL_BATT_OVERLOAD, toOnOff(msg.data, 16));
+        updateState(CHANNEL_BATT_OVERDISCHARGE, toOnOff(msg.data, 17));
+        updateState(CHANNEL_BATT_FULL, toOnOff(msg.data, 18));
+        updateState(CHANNEL_BATT_CHARGING, toOnOff(msg.data, 19));
+        updateState(CHANNEL_BATT_TEMP, toDecimalTemp(msg.data, 20));
+        DecimalType chargeCurrent = toDecimal(msg.data, 21);
+        updateState(CHANNEL_CHARGE_CURRENT, chargeCurrent);
+
+        // Calculated
+        updateState(CHANNEL_CHARGE_POWER, new DecimalType(
+                battVoltage.floatValue() * chargeCurrent.floatValue()));
+        updateState(CHANNEL_LOAD_POWER, new DecimalType(
+                battVoltage.floatValue() * loadCurrent.floatValue()));
     }
 
     /**
@@ -390,7 +408,11 @@ public class SolarTracerHandler extends BaseThingHandler
                         / 100.0);
     }
 
-    private static OnOffType toOnoff(byte[] bytes, int offset) {
+    private static DecimalType toDecimalTemp(byte[] bytes, int offset) {
+        return new DecimalType((bytes[offset] & 0xff) - 30.0);
+    }
+
+    private static OnOffType toOnOff(byte[] bytes, int offset) {
         return bytes[offset] > 0 ? OnOffType.ON : OnOffType.OFF;
     }
 
