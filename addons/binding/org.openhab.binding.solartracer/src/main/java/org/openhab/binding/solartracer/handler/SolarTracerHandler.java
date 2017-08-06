@@ -163,11 +163,13 @@ public class SolarTracerHandler extends BaseThingHandler
                 allNames.add(id.getName() + ":" + id.getPortType());
             }
             throw new IOException("Serial port " + portName
-                    + " not found among " + String.join(", ", allNames)
+                    + " not found among "
+                    + (allNames.isEmpty() ? "none available"
+                            : String.join(", ", allNames))
                     + ". You may need to pass -Dgnu.io.rxtx.SerialPorts="
                     + portName
                     + " to java startup arguments or add to EXTRA_JAVA_OPTS "
-                    + "/dev/default/openhab2 on linux. On OS X Java doesn't have "
+                    + "/etc/default/openhab2 on linux. On Max OSX Java doesn't have "
                     + "built-in support for serial ports, this has to be "
                     + "installed by following instructions on "
                     + "http://jlog.org/rxtx-mac.html");
